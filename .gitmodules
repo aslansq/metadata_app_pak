@@ -1,0 +1,3 @@
+[submodule "md5-c"]
+	path = md5-c
+	url = git@github.com:aslansq/md5-c.git
