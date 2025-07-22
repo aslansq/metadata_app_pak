@@ -87,21 +87,21 @@ static void pak(
 	char *out_file_path_ptr
 )
 {
-	pak_app_info_t pak_app_info;
+	pak_app_metadata_t pak_app_metadata;
 	MD5Context md5_ctx;
 	memset(&md5_ctx, 0, sizeof(MD5Context));
-	memset(&pak_app_info, 0, sizeof(pak_app_info_t));
+	memset(&pak_app_metadata, 0, sizeof(pak_app_metadata_t));
 	
 	uint64_t bin_size = get_bin_size(in_file_path_ptr);
 
-	pak_app_info.size = (uint32_t)bin_size;
-	pak_app_info.version.major = (uint8_t)major;
-	pak_app_info.version.minor = (uint8_t)minor;
-	pak_app_info.version.patch = (uint8_t)patch;
-	pak_app_info.version.reserved = 0;
-	pak_app_info.epoch_time = (uint64_t)time(NULL);
-	pak_app_info.fingerprint = (uint32_t)fingerprint;
-	pak_app_info.offset = (uint32_t)offset;
+	pak_app_metadata.size = (uint32_t)bin_size;
+	pak_app_metadata.version.major = (uint8_t)major;
+	pak_app_metadata.version.minor = (uint8_t)minor;
+	pak_app_metadata.version.patch = (uint8_t)patch;
+	pak_app_metadata.version.reserved = 0;
+	pak_app_metadata.epoch_time = (uint64_t)time(NULL);
+	pak_app_metadata.fingerprint = (uint32_t)fingerprint;
+	pak_app_metadata.offset = (uint32_t)offset;
 
 	uint8_t *bin_ptr = get_bin(in_file_path_ptr, bin_size);
 	
@@ -111,11 +111,11 @@ static void pak(
 	}
 
 	md5Calc(&md5_ctx, bin_ptr, (uint32_t)bin_size);
-	memcpy(pak_app_info.md5_hash, md5_ctx.digest, sizeof(pak_app_info.md5_hash));
+	memcpy(pak_app_metadata.md5_hash, md5_ctx.digest, sizeof(pak_app_metadata.md5_hash));
 
-	pak_app_info.crc = crc_cal32(
-		(uint8_t *)&pak_app_info,
-		sizeof(pak_app_info_t) - sizeof(pak_app_info.crc),
+	pak_app_metadata.crc = crc_cal32(
+		(uint8_t *)&pak_app_metadata,
+		sizeof(pak_app_metadata_t) - sizeof(pak_app_metadata.crc),
 		UINT32_MAX
 	);
 
@@ -129,7 +129,7 @@ static void pak(
 	uint32_t out_bin_size = offset + bin_size;
 	memset(out_bin_ptr, 0xff, out_bin_size);
 
-	memcpy(out_bin_ptr, &pak_app_info, sizeof(pak_app_info_t));
+	memcpy(out_bin_ptr, &pak_app_metadata, sizeof(pak_app_metadata_t));
 	memcpy(out_bin_ptr + offset, bin_ptr, bin_size);
 
 	write_bin(out_file_path_ptr, out_bin_ptr, out_bin_size);
@@ -153,18 +153,18 @@ static void pak_check(char *out_file_path_ptr)
 		exit(1);
 	}
 
-	pak_app_info_t *pak_app_info_ptr = (pak_app_info_t *)bin_ptr;
-	uint8_t *app_bin_ptr = bin_ptr + pak_app_info_ptr->offset;
+	pak_app_metadata_t *pak_app_metadata_ptr = (pak_app_metadata_t *)bin_ptr;
+	uint8_t *app_bin_ptr = bin_ptr + pak_app_metadata_ptr->offset;
 
 	uint32_t crc = crc_cal32(
-		(uint8_t *)pak_app_info_ptr,
-		sizeof(pak_app_info_t) - sizeof(pak_app_info_ptr->crc),
+		(uint8_t *)pak_app_metadata_ptr,
+		sizeof(pak_app_metadata_t) - sizeof(pak_app_metadata_ptr->crc),
 		UINT32_MAX
 	);
 
-	if (crc != pak_app_info_ptr->crc) {
+	if (crc != pak_app_metadata_ptr->crc) {
 		printf("CRC32 checksum mismatch: expected 0x%x, got 0x%x\n",
-			pak_app_info_ptr->crc, crc);
+			pak_app_metadata_ptr->crc, crc);
 		exit(1);
 	} else {
 		printf("CRC32 checksum is valid: 0x%x\n", crc);
@@ -172,11 +172,11 @@ static void pak_check(char *out_file_path_ptr)
 
 	MD5Context md5_ctx;
 	memset(&md5_ctx, 0, sizeof(MD5Context));
-	md5Calc(&md5_ctx, app_bin_ptr, pak_app_info_ptr->size);
-	if (memcmp(md5_ctx.digest, pak_app_info_ptr->md5_hash, sizeof(pak_app_info_ptr->md5_hash)) != 0) {
+	md5Calc(&md5_ctx, app_bin_ptr, pak_app_metadata_ptr->size);
+	if (memcmp(md5_ctx.digest, pak_app_metadata_ptr->md5_hash, sizeof(pak_app_metadata_ptr->md5_hash)) != 0) {
 		printf("MD5 hash mismatch: expected ");
-		for (int i = 0; i < sizeof(pak_app_info_ptr->md5_hash); i++) {
-			printf("%02x", pak_app_info_ptr->md5_hash[i]);
+		for (int i = 0; i < sizeof(pak_app_metadata_ptr->md5_hash); i++) {
+			printf("%02x", pak_app_metadata_ptr->md5_hash[i]);
 		}
 		printf(", got ");
 		for (int i = 0; i < sizeof(md5_ctx.digest); i++) {
@@ -186,20 +186,20 @@ static void pak_check(char *out_file_path_ptr)
 		exit(1);
 	} else {
 		printf("MD5 hash is valid: ");
-		for (int i = 0; i < sizeof(pak_app_info_ptr->md5_hash); i++) {
-			printf("%02x", pak_app_info_ptr->md5_hash[i]);
+		for (int i = 0; i < sizeof(pak_app_metadata_ptr->md5_hash); i++) {
+			printf("%02x", pak_app_metadata_ptr->md5_hash[i]);
 		}
 		printf("\n");
 	}
 
-	printf("Application size: %u bytes\n", pak_app_info_ptr->size);
+	printf("Application size: %u bytes\n", pak_app_metadata_ptr->size);
 	printf("Application version: %u.%u.%u\n",
-		pak_app_info_ptr->version.major,
-		pak_app_info_ptr->version.minor,
-		pak_app_info_ptr->version.patch);
-	printf("Application build time: %lu seconds since epoch\n", pak_app_info_ptr->epoch_time);
-	printf("Application fingerprint: %u\n", pak_app_info_ptr->fingerprint);
-	printf("Application offset: %u bytes\n", pak_app_info_ptr->offset);
+		pak_app_metadata_ptr->version.major,
+		pak_app_metadata_ptr->version.minor,
+		pak_app_metadata_ptr->version.patch);
+	printf("Application build time: %lu seconds since epoch\n", pak_app_metadata_ptr->epoch_time);
+	printf("Application fingerprint: %u\n", pak_app_metadata_ptr->fingerprint);
+	printf("Application offset: %u bytes\n", pak_app_metadata_ptr->offset);
 	
 	if(bin_ptr != NULL) {
 		free(bin_ptr);
@@ -325,8 +325,8 @@ int main(int argc, char *argv[])
 		printf("Offset of the application binary must be a positive integer.\n");
 		exit(1);
 	}
-	if(offset < sizeof(pak_app_info_t)) {
-		printf("Offset must be bigger than %zu[sizeof(pak_app_info_t)] bytes.\n", sizeof(pak_app_info_t));
+	if(offset < sizeof(pak_app_metadata_t)) {
+		printf("Offset must be bigger than %zu[sizeof(pak_app_metadata_t)] bytes.\n", sizeof(pak_app_metadata_t));
 		exit(1);
 	}
 

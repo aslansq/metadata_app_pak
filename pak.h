@@ -18,6 +18,6 @@ typedef struct __attribute__((__packed__)) {
 	uint32_t offset; // offset of the app binary in the output file
 	uint8_t md5_hash[16]; // MD5 hash of the app binary
 	uint32_t crc; // CRC32 checksum of the this structure
-} pak_app_info_t;
+} pak_app_metadata_t;
 
 #endif // PAK_H
